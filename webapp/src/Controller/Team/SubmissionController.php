@@ -79,9 +79,25 @@ class SubmissionController extends BaseController
                 $language = $form->get('language')->getData();
                 /** @var UploadedFile[] $files */
                 $files      = $form->get('code')->getData();
-                if (!is_array($files)) {
+                if (is_null($files)) {
+                    $files = [];
+                } else if (!is_array($files)) {
                     $files = [$files];
                 }
+
+                $text_name_raw = $form->get('code_text_name')->getData();
+                if (!is_null($text_name_raw) && $text_name_raw != '') {
+                    $text_file_name = pathinfo($text_name_raw, PATHINFO_BASENAME);
+                    $text_file_path = sprintf("%s/%s", sys_get_temp_dir(), $text_file_name);
+                    $text_file = fopen($text_file_path, "w");
+                    fwrite($text_file, $form->get('code_text')->getData());
+                    fclose($text_file);
+
+                    $text_uploaded_file = new UploadedFile($text_file_path, $text_file_name, null, UPLOAD_ERR_OK, true);
+
+                    array_push($files, $text_uploaded_file);
+                }
+
                 $entryPoint = $form->get('entry_point')->getData() ?: null;
                 $submission = $this->submissionService->submitSolution(
                     $team, $this->dj->getUser(), $problem->getProbid(), $contest, $language, $files, 'team page', null,
@@ -94,7 +110,7 @@ class SubmissionController extends BaseController
                         'Submission done! Watch for the verdict in the list below.'
                     );
                 } else {
-                    $this->addFlash('danger', $message);
+                    $this->addFlash('danger', sprintf("from service: %s", $message));
                 }
                 return $this->redirectToRoute('team_index');
             }

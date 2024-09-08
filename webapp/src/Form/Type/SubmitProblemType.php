@@ -12,6 +12,7 @@ use Doctrine\ORM\Query\Expr\Join;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\FileType;
+use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Form;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -36,7 +37,45 @@ class SubmitProblemType extends AbstractType
 
         $builder->add('code', FileType::class, [
             'label' => 'Source file' . ($allowMultipleFiles ? 's' : ''),
+            'required' => false,
             'multiple' => $allowMultipleFiles,
+            'constraints' => [
+                new Callback(function ($value, ExecutionContextInterface $context) {
+                    $form = $context->getRoot();
+                    $files = $form->get('code')->getData();
+                    $text = $form->get('code_text')->getData();
+                    if ((is_null($files) || count($files) == 0) && (is_null($text) || $text == '')) {
+                        $context
+                            ->buildViolation("A file must be submitted")
+                            ->atPath('code')
+                            ->addViolation();
+                    }
+                }),
+            ]
+        ]);
+
+        $builder->add('code_text_name', TextType::class, [
+            'label' => 'Source file name',
+            'help' => 'File name for any code in the text box',
+            'required' => false,
+            'constraints' => [
+                new Callback(function ($value, ExecutionContextInterface $context) {
+                    $form = $context->getRoot();
+                    $text = $form->get('code_text')->getData();
+                    $name = $form->get('code_text_name')->getData();
+                    if (!is_null($text) && $text != '' && (is_null($name) || $name == '')) {
+                        $context
+                            ->buildViolation("A file name is required")
+                            ->atPath('code_text_name')
+                            ->addViolation();
+                    }
+                }),
+            ]
+        ]);
+
+        $builder->add('code_text', TextareaType::class, [
+            'label' => 'Source file',
+            'required' => false,
         ]);
 
         $problemConfig = [
